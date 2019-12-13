@@ -1,0 +1,205 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="initial-scale=1,maximum-scale=1,user-scalable=no"
+    />
+    <!--
+  ArcGIS API for JavaScript, https://js.arcgis.com
+  For more information about the popup-editaction sample, read the original sample description at developers.arcgis.com.
+  https://developers.arcgis.com/javascript/latest/sample-code/popup-editaction/index.html
+  -->
+<title>Attachment Viewer/Editor</title>
+
+    <link
+      rel="stylesheet"
+      href="https://js.arcgis.com/4.13/esri/themes/light/main.css"
+    />
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    <script src="https://js.arcgis.com/4.13/"></script>
+
+    <style>
+      html,
+      body,
+      #viewDiv {
+        padding: 0;
+        margin: 0;
+        height: 100%;
+        width: 100%;
+      }
+	  #data {
+		visibility: hidden;
+	  }
+    </style>
+    <script>
+      require([
+        "esri/Map",
+        "esri/layers/FeatureLayer",
+        "esri/views/MapView",
+        "esri/popup/content/AttachmentsContent",
+        "esri/popup/content/TextContent"
+      ], function(
+        Map,
+        FeatureLayer,
+        MapView,
+        AttachmentsContent,
+        TextContent
+      ) {
+        // Create the Map
+        const map = new Map({
+          basemap: "dark-gray-vector"
+        });
+        let features, countriesLayerView;
+		    var queryString = "";
+		    let highlight;
+        
+        const editThisAction = {
+          title: "Add Attachment",
+          id: "edit-this",
+          className: "esri-icon-edit"
+        };
+
+		    let attachmentsElement = new AttachmentsContent({
+			      displayType: "list"
+		    });
+        
+        // Create a popupTemplate for the featurelayer and pass in a function to set its content and specify an action to handle editing the selected feature
+        const template = {
+          title: "Country name: {NAME}",
+		  outfields: ["*"],
+          content: [attachmentsElement],
+          actions: [editThisAction]
+        };
+        
+        const countriesRenderer = {
+          type: "simple", // autocasts as new SimpleRenderer()
+          symbol: {
+              type: "simple-fill", 
+              style: "none",
+              outline: {
+                color: [197, 0, 255, .5]
+              }
+            }
+        };
+
+        const featureLayer = new FeatureLayer({
+          url:
+            "https://services9.arcgis.com/QP9rWOQr7HMr3J8o/arcgis/rest/services/Countries_test/FeatureServer/0",
+          outFields: ["*"],
+          popupTemplate: template,
+          renderer: countriesRenderer
+        });
+		    map.add(featureLayer);
+		
+		    // Create the MapView
+        const view = new MapView({
+          container: "viewDiv",
+          map: map,
+          zoom: 1,
+          highlightOptions: {
+            color: [197, 0, 255, .7 ],
+            haloOpacity: 0.9,
+            fillOpacity: 0.2
+          }
+        });
+
+			view.whenLayerView(featureLayer).then(function (layerView) {
+				if (highlight) {
+					    highlight.remove();
+					  }
+		
+		        // queryObjectIds for all features within the layer
+		        countriesLayerView = layerView;
+		        featureLayer.queryObjectIds().then(function (objectIds) {
+			          var attachmentQuery = {
+			              objectIds: objectIds,
+			              attachmentTypes: ["application/pdf"]
+			          };
+			          featureLayer.queryAttachments(attachmentQuery).then(function (attachments) {
+			              // Print out all returned attachment infos to the console.
+                    let arr = [];
+                    attachmentQuery.objectIds.forEach(function (objectId) {
+					            if (attachments[objectId]) {
+                        arr.push(objectId);
+					            }
+			              });
+                    highlight = countriesLayerView.highlight(arr);
+			          })
+			        .catch(function (error) {
+				        console.log("attachment query error", error);
+			        })
+		        });
+		    });
+
+          // Event handler that fires each time an action is clicked
+          view.popup.on("trigger-action", function(event) {
+            if (event.action.id === "edit-this") {
+			  $( "#fileSelector" ).trigger( "click" );
+            }
+          });
+		
+		$("#fileSelector").change(uploadFile);
+        
+		function uploadFile() {
+		    view.popup.close();
+			var form = $("#data")[0];
+			var formData = new FormData(form);
+		    //console.log(view.popup.selectedFeature.attributes.OBJECTID);
+			var theUrl = view.popup.selectedFeature.layer.url + "/" + view.popup.selectedFeature.layer.layerId + "/" + view.popup.selectedFeature.attributes.OBJECTID + "/addAttachment";
+			//console.log(theUrl);
+			
+			var request = new XMLHttpRequest();
+			request.open("POST", view.popup.selectedFeature.layer.url + "/" + view.popup.selectedFeature.layer.layerId + "/" + view.popup.selectedFeature.attributes.OBJECTID + "/addAttachment");
+			request.onload = function(e) {
+				var json = JSON.parse(request.responseText);
+				if(json.addAttachmentResult.success == true) {
+					updatePopup();
+				}
+				else {
+					alert("Could not upload the file!");
+				}
+			}
+			request.onerror = function(e) {
+				alert("Could not upload the file!");
+			}
+			
+			request.send(formData);
+		}
+		function updatePopup() {
+				if (highlight) {
+					    highlight.remove();
+					  }
+		        featureLayer.queryObjectIds().then(function (objectIds) {
+			          var attachmentQuery = {
+			              objectIds: objectIds,
+			              attachmentTypes: ["application/pdf"]
+			          };
+			          featureLayer.queryAttachments(attachmentQuery).then(function (attachments) {
+			        // Print out all returned attachment infos to the console.
+                    //console.log("before highlight");
+                    let arr = [];
+                    attachmentQuery.objectIds.forEach(function (objectId) {
+					            if (attachments[objectId]) {
+                        arr.push(objectId);
+					            }
+			              });
+                    highlight = countriesLayerView.highlight(arr);
+			          })
+			        .catch(function (error) {
+				        console.log("attachment query error", error);
+			        })
+		        });
+			}
+      });
+    </script>
+  </head>
+
+  <body>
+    <div id="viewDiv"></div>
+    <form id="data" enctype="multipart/form-data" method="post" >
+		<input id="fileSelector" type="file" name="attachment">
+		<input name="f" value="json">
+	</form>
+  </body>
+</html>
