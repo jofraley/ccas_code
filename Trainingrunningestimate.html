@@ -93,7 +93,14 @@
         const template = {
           title: "Country name: {NAME}",
 		  outfields: ["*"],
-          content: [attachmentsElement],
+          content: [
+			{
+				type: "text",
+				text: "Do not enter documents with Personally Identifiable Information (PII). This repository is for non-classified (Non-PII) information only."
+			},
+			{
+				type: "attachments"
+			}],
           actions: [editThisAction]
         };
         
