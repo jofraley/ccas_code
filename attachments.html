@@ -10,7 +10,7 @@
   For more information about the popup-editaction sample, read the original sample description at developers.arcgis.com.
   https://developers.arcgis.com/javascript/latest/sample-code/popup-editaction/index.html
   -->
-<title>Attachment Viewer/Editor</title>
+<title>Historic Area Surveys</title>
 
     <link
       rel="stylesheet"
@@ -93,7 +93,14 @@
         const template = {
           title: "Country name: {NAME}",
 		  outfields: ["*"],
-          content: [attachmentsElement],
+          content: [
+			{
+				type: "text",
+				text: "Do not enter documents with Personally Identifiable Information (PII). This repository is for non-classified (Non-PII) information only."
+			},
+			{
+				type: "attachments"
+			}],
           actions: [editThisAction]
         };
         
